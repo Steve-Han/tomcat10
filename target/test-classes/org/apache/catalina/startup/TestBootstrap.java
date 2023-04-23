@@ -23,6 +23,12 @@ import org.junit.Test;
 public class TestBootstrap {
 
     @Test
+    public void doMyTest() {
+        String userDir = System.getProperty("user.dir");
+        System.out.println(userDir);
+    }
+
+    @Test
     public void testEmptyNonQuoted() {
         doTest("");
     }

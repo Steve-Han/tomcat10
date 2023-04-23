@@ -50,6 +50,7 @@ public class StringManager {
 
     /**
      * The ResourceBundle for this StringManager.
+     *  ResourceBundle用于读取properties文件
      */
     private final ResourceBundle bundle;
     private final Locale locale;
@@ -62,6 +63,8 @@ public class StringManager {
      * @param packageName Name of package to create StringManager for.
      */
     private StringManager(String packageName, Locale locale) {
+        // properties文件所在的package+“.LocalStrings” 例如: org.apache.catalina.core.LocalStrings
+        // 所有tomcat的日志使用的properties文件都依照这个形式来命名的
         String bundleName = packageName + ".LocalStrings";
         ResourceBundle bnd = null;
         try {
@@ -72,6 +75,7 @@ public class StringManager {
             if (locale.getLanguage().equals(Locale.ENGLISH.getLanguage())) {
                 locale = Locale.ROOT;
             }
+            // 根据bundleName取得解析资源文件的实例
             bnd = ResourceBundle.getBundle(bundleName, locale);
         } catch (MissingResourceException ex) {
             // Try from the current loader (that's the case for trusted apps)
@@ -121,6 +125,7 @@ public class StringManager {
         try {
             // Avoid NPE if bundle is null and treat it like an MRE
             if (bundle != null) {
+                // 资源文件里去查有没有对应的内容
                 str = bundle.getString(key);
             }
         } catch (MissingResourceException mre) {
@@ -158,6 +163,7 @@ public class StringManager {
 
         MessageFormat mf = new MessageFormat(value);
         mf.setLocale(locale);
+        // 格式化，就是把一些变化的参数插入到value这个string中去，格式化成一个新的最终的string
         return mf.format(args, new StringBuffer(), null).toString();
     }
 
@@ -175,7 +181,7 @@ public class StringManager {
     // --------------------------------------------------------------
     // STATIC SUPPORT METHODS
     // --------------------------------------------------------------
-
+    // HashMap维护整个tomcat的StringManager
     private static final Map<String, Map<Locale, StringManager>> managers = new HashMap<>();
 
 
@@ -210,6 +216,9 @@ public class StringManager {
      * Get the StringManager for a particular package and Locale. If a manager for a package/Locale combination already
      * exists, it will be reused, else a new StringManager will be created and returned.
      *
+     *  保证一个包一个StringManager，私有化构造函数 + HashMap维护实现（值得学习）
+     *  从而避免大量的StringManager实例化和销毁的操作,毕竟写日志属于比较频繁的操作。
+     *
      * @param packageName The package name
      * @param locale      The Locale
      *
@@ -217,6 +226,7 @@ public class StringManager {
      */
     public static final synchronized StringManager getManager(String packageName, Locale locale) {
 
+        // 用一个HashMap来管理控制，保证每个包提供一个StringManager
         Map<Locale, StringManager> map = managers.get(packageName);
         if (map == null) {
             /*

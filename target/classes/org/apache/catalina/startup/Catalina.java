@@ -726,16 +726,20 @@ public class Catalina {
         long t1 = System.nanoTime();
 
         // Before digester - it may be needed
+        // 初始化Naming，因为在使用 digester解析server.xml时或许会被使用到
         initNaming();
 
         // Parse main server.xml
+        // 解析 server.xml
         parseServerXml(true);
         Server s = getServer();
         if (s == null) {
             return;
         }
 
+        // 将当前对象（catalinaDaemon）赋值给新创建的Server的catalina属性
         getServer().setCatalina(this);
+        // 将Bootstrap类中初始化的CatalinaHome和CatalinaBase赋值给Server的对应属性
         getServer().setCatalinaHome(Bootstrap.getCatalinaHomeFile());
         getServer().setCatalinaBase(Bootstrap.getCatalinaBaseFile());
 
@@ -743,6 +747,7 @@ public class Catalina {
         initStreams();
 
         // Start the new server
+        // 初始化新的Server
         try {
             getServer().init();
         } catch (LifecycleException e) {

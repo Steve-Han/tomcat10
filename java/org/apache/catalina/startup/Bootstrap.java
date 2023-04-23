@@ -55,6 +55,9 @@ public final class Bootstrap {
      * Daemon object used by main.
      */
     private static final Object daemonLock = new Object();
+    /**
+     * daemon: main方法使用的守护进程对象.
+     */
     private static volatile Bootstrap daemon = null;
 
     private static final File catalinaBaseFile;
@@ -64,6 +67,7 @@ public final class Bootstrap {
 
     static {
         // Will always be non-null
+        // "user.dir"是指用户当前工作目录。如果你是在IDE中运行项目，这个目录就是你当前项目所在的根目录。
         String userDir = System.getProperty("user.dir");
 
         // Home first
@@ -130,6 +134,7 @@ public final class Bootstrap {
 
     /**
      * Daemon reference.
+     * 守护程序引用的catalina对象。
      */
     private Object catalinaDaemon = null;
 
@@ -140,7 +145,9 @@ public final class Bootstrap {
 
     // -------------------------------------------------------- Private Methods
 
-
+    // 首先通过initClassLoaders()方法创建了三个类加载器，对应为以下的三个变量赋值：
+    // 对应的配置在conf/catalina.properties文件中
+    // common.loader是另外两个类的父级，默认情况下，server.loader和shared.loader未作配置，返回结果同common.loader。
     private void initClassLoaders() {
         try {
             commonLoader = createClassLoader("common", null);
@@ -250,7 +257,7 @@ public final class Bootstrap {
      * @throws Exception Fatal initialization error
      */
     public void init() throws Exception {
-
+        // 创建并初始化三个ClassLoader
         initClassLoaders();
 
         Thread.currentThread().setContextClassLoader(catalinaLoader);
@@ -261,6 +268,7 @@ public final class Bootstrap {
         if (log.isDebugEnabled()) {
             log.debug("Loading startup class");
         }
+        // 通过反射方式创建
         Class<?> startupClass = catalinaLoader.loadClass("org.apache.catalina.startup.Catalina");
         Object startupInstance = startupClass.getConstructor().newInstance();
 
@@ -304,7 +312,7 @@ public final class Bootstrap {
         if (log.isDebugEnabled()) {
             log.debug("Calling startup class " + method);
         }
-        method.invoke(catalinaDaemon, param);
+         method.invoke(catalinaDaemon, param);
     }
 
 
@@ -442,6 +450,7 @@ public final class Bootstrap {
         synchronized (daemonLock) {
             if (daemon == null) {
                 // Don't set daemon until init() has completed
+                // 在初始化完成之前，不要对daemon赋值
                 Bootstrap bootstrap = new Bootstrap();
                 try {
                     bootstrap.init();
@@ -455,6 +464,7 @@ public final class Bootstrap {
                 // When running as a service the call to stop will be on a new
                 // thread so make sure the correct class loader is used to
                 // prevent a range of class not found exceptions.
+                // 当作为服务正在运行时，如果调用停止方法，这将在一个新线程上进行，以确保使用正确的类加载器，防止出现未找到类的异常。
                 Thread.currentThread().setContextClassLoader(daemon.catalinaLoader);
             }
         }
