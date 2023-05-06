@@ -92,8 +92,11 @@ public class IdentityInputFilter implements InputFilter, ApplicationBufferHandle
 
         int result = -1;
 
+        // contentLength ，remaining 是在filter设置request的时候确定的，
         if (contentLength >= 0) {
             if (remaining > 0) {
+                // 这里又是buffer，估计你已经晕了，这个buffer是在设置activeFilter时确定的，
+                // 一个filter的话，该buffer就是SocketInputBuffer，handler是ApplicationBufferHandler,
                 int nRead = buffer.doRead(handler);
                 if (nRead > remaining) {
                     // The chunk is longer than the number of bytes remaining

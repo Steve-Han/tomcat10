@@ -4696,6 +4696,7 @@ public class StandardContext extends ContainerBase implements Context, Notificat
             }
         }
         if (ok) {
+            // 加载 /WEB-INF/classes/META-INF/resources 目录下资源
             resourcesStart();
         }
 

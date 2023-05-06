@@ -191,7 +191,7 @@ public class Http11InputBuffer implements InputBuffer, ApplicationBufferHandler 
         InputFilter[] newFilterLibrary = Arrays.copyOf(filterLibrary, filterLibrary.length + 1);
         newFilterLibrary[filterLibrary.length] = filter;
         filterLibrary = newFilterLibrary;
-
+        //activeFilters 是在读完header后，根据content length 来判断body是普通的还是chunked 形式的。来决定用那个inputFilter 来解释，并放到activeFilters
         activeFilters = new InputFilter[filterLibrary.length];
     }
 
@@ -209,19 +209,24 @@ public class Http11InputBuffer implements InputBuffer, ApplicationBufferHandler 
      */
     void addActiveFilter(InputFilter filter) {
 
+        // lastActiveFilter 默认是-1，即第一个activeFilter时，指定filter的buffer
         if (lastActiveFilter == -1) {
             filter.setBuffer(inputStreamInputBuffer);
         } else {
+            // 不是第一个，则需要判断是否已经添加过。如果添加过，则忽略
             for (int i = 0; i <= lastActiveFilter; i++) {
                 if (activeFilters[i] == filter) {
                     return;
                 }
             }
+            // 前面已经有filter，该filter的buffer 为上个filter的buffer
             filter.setBuffer(activeFilters[lastActiveFilter]);
         }
 
+        // 添加到activeFilters
         activeFilters[++lastActiveFilter] = filter;
 
+        // 如果是普通的post请求，对应的filter 设置content-length
         filter.setRequest(request);
     }
 
@@ -379,11 +384,13 @@ public class Http11InputBuffer implements InputBuffer, ApplicationBufferHandler 
             parsingRequestLineStart = byteBuffer.position();
             parsingRequestLinePhase = 2;
         }
+        //解析请求方法 Method
         if (parsingRequestLinePhase == 2) {
             //
             // Reading the method name
             // Method name is a token
             //
+            // space类似于开关一样，当为false时，查内容，为true时，去除空行时间
             boolean space = false;
             while (!space) {
                 // Read new bytes if needed
@@ -396,8 +403,10 @@ public class Http11InputBuffer implements InputBuffer, ApplicationBufferHandler 
                 // also be tolerant of multiple SP and/or HT.
                 int pos = byteBuffer.position();
                 chr = byteBuffer.get();
+                // 查出第一个空格，tab居然也是允许的
                 if (chr == Constants.SP || chr == Constants.HT) {
-                    space = true;
+                    space = true; //跳出循环
+                    // 把下标记录下来,这里的method()得到一个Requast的MessageBytes：methodMB
                     request.method().setBytes(byteBuffer.array(), parsingRequestLineStart,
                             pos - parsingRequestLineStart);
                 } else if (!HttpParser.isToken(chr)) {
@@ -412,6 +421,7 @@ public class Http11InputBuffer implements InputBuffer, ApplicationBufferHandler 
         if (parsingRequestLinePhase == 3) {
             // Spec says single SP but also be tolerant of multiple SP and/or HT
             boolean space = true;
+            // 忽略空格后面的空格或者tab，因为是忽略的内容所以不需要什么start
             while (space) {
                 // Read new bytes if needed
                 if (byteBuffer.position() >= byteBuffer.limit()) {
@@ -428,6 +438,7 @@ public class Http11InputBuffer implements InputBuffer, ApplicationBufferHandler 
             parsingRequestLineStart = byteBuffer.position();
             parsingRequestLinePhase = 4;
         }
+        //解析请求的资源Path-to-resoure
         if (parsingRequestLinePhase == 4) {
             // Mark the current buffer position
 
@@ -527,6 +538,7 @@ public class Http11InputBuffer implements InputBuffer, ApplicationBufferHandler 
             // Mark the current buffer position
             end = 0;
         }
+        // 解析HTTP协议的版本号
         if (parsingRequestLinePhase == 6) {
             //
             // Reading the protocol

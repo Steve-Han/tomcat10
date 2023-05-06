@@ -194,11 +194,11 @@ public final class ByteChunk extends AbstractChunk {
      * @param len the length of the bytes
      */
     public void setBytes(byte[] b, int off, int len) {
-        buff = b;
-        start = off;
-        end = start + len;
-        isSet = true;
-        hasHashCode = false;
+        buff = b; // 待标记的字节数组
+        start = off; // 开始位置
+        end = start + len; // 结束位置
+        isSet = true; // 是否已经设置过了
+        hasHashCode = false; // 是否有hashCode
     }
 
 
@@ -545,6 +545,9 @@ public final class ByteChunk extends AbstractChunk {
         // new String(byte[], int, int, Charset) takes a defensive copy of the
         // entire byte array. This is expensive if only a small subset of the
         // bytes will be used. The code below is from Apache Harmony.
+        // 需要特别注意toStringInternal()的内部注释，该注释已经给出了使用CharSet.decode()代替直接使用new String(byte[], int, int, Charset)的原因。
+        // 因为很多时候，我们往往只提取一个大的byte[]里面很小的一部分byte[]。
+        // 如果使用new String(byte[], int, int, Charset)，将会对整个byte数组进行拷贝，严重影响性能。
         CharBuffer cb = charset.decode(ByteBuffer.wrap(buff, start, end - start));
         return new String(cb.array(), cb.arrayOffset(), cb.length());
     }

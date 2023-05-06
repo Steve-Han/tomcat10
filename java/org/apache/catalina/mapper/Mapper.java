@@ -58,6 +58,7 @@ public final class Mapper {
      * Array containing the virtual hosts definitions.
      */
     // Package private to facilitate testing
+        //表示一个Engine下所有host
     volatile MappedHost[] hosts = new MappedHost[0];
 
 
@@ -643,6 +644,7 @@ public final class Mapper {
 
     /**
      * Map the specified host name and URI, mutating the given mapping data.
+     *  映射的入口，此方法只做一件事，如果host为空时，就设置为默认host
      *
      * @param host        Virtual host name
      * @param uri         URI
@@ -663,6 +665,7 @@ public final class Mapper {
         }
         host.toChars();
         uri.toChars();
+        // 调用映射方法，这个是核心方法
         internalMap(host.getCharChunk(), uri.getCharChunk(), version, mappingData);
     }
 
@@ -1483,6 +1486,7 @@ public final class Mapper {
 
     protected static final class MappedHost extends MapElement<Host> {
 
+        // 存储当前主机下的应用列表
         public volatile ContextList contextList;
 
         /**
@@ -1608,6 +1612,7 @@ public final class Mapper {
         public final int slashCount;
         public final WebResourceRoot resources;
         public String[] welcomeResources;
+        //servlet包装类
         public MappedWrapper defaultWrapper = null;
         public MappedWrapper[] exactWrappers = new MappedWrapper[0];
         public MappedWrapper[] wildcardWrappers = new MappedWrapper[0];

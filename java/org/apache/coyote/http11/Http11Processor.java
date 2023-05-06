@@ -219,9 +219,13 @@ public class Http11Processor extends AbstractProcessor {
 
         // Parsing trims and converts to lower case.
         if (encodingName.equals("chunked")) {
+            // 如果是chunked，则指定inputFilter为ChunkedInputFilter，通过索引指定,inputFilter数组中依次为identity,chunked,buffer,void
+            // 通过addActiveFilter来设置activeFilter
             inputBuffer.addActiveFilter(inputFilters[Constants.CHUNKED_FILTER]);
+            //并设置contentDelimitation 为true，说明已经确定，后面如果出现content-length时，会忽略。
             contentDelimitation = true;
         } else {
+            // 如果不是identity，chunked，则根据encoding 匹配到具体的inputFilter
             for (int i = pluggableFilterIndex; i < inputFilters.length; i++) {
                 if (inputFilters[i].getEncodingName().toString().equals(encodingName)) {
                     inputBuffer.addActiveFilter(inputFilters[i]);
@@ -364,6 +368,7 @@ public class Http11Processor extends AbstractProcessor {
                 // Setting up filters, and parse some request headers
                 rp.setStage(org.apache.coyote.Constants.STAGE_PREPARE);
                 try {
+                    // 指定request body的读取filter,并没有真正读取
                     prepareRequest();
                 } catch (Throwable t) {
                     ExceptionUtils.handleThrowable(t);
@@ -647,6 +652,7 @@ public class Http11Processor extends AbstractProcessor {
         }
 
         // Check user-agent header
+        // 只有http 1.1 才支持keepAlive，否则都是短连接，不能重用。
         Pattern restrictedUserAgents = protocol.getRestrictedUserAgentsPattern();
         if (restrictedUserAgents != null && (http11 || keepAlive)) {
             MessageBytes userAgentValueMB = headers.getValue("user-agent");
@@ -809,6 +815,9 @@ public class Http11Processor extends AbstractProcessor {
         // Parse transfer-encoding header
         // HTTP specs say an HTTP 1.1 server should accept any recognised
         // HTTP 1.x header from a 1.x client unless the specs says otherwise.
+        // 和body相关的header 是transfer-encoding 和 content-length,prepareRequest方法会根据这两个header 来判断body的解析
+        // tomcat是先检查是否有transfer-encoding, 需要注意的是，需要http1.1 才能支持chunk模式
+        // 在进行chunked编码传输时，在回复消息的头部有Transfer-Encoding: chunked
         if (!http09) {
             MessageBytes transferEncodingValueMB = headers.getValue("transfer-encoding");
             if (transferEncodingValueMB != null) {
@@ -834,6 +843,7 @@ public class Http11Processor extends AbstractProcessor {
             badRequest("http11processor.request.multipleContentLength");
         }
         if (contentLength >= 0) {
+            // 从上面的代码可以看出，contentDelimitation为true，即代表出现transfer-encoding header，则忽略content-length
             if (contentDelimitation) {
                 // contentDelimitation being true at this point indicates that
                 // chunked encoding is being used but chunked encoding should
@@ -844,6 +854,7 @@ public class Http11Processor extends AbstractProcessor {
                 request.setContentLength(-1);
                 keepAlive = false;
             } else {
+                // 没有出现chunked，则时普通的body，指定读取request body的filter为identityFilter解析
                 inputBuffer.addActiveFilter(inputFilters[Constants.IDENTITY_FILTER]);
                 contentDelimitation = true;
             }

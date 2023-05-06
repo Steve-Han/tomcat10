@@ -3139,6 +3139,8 @@ public class Request implements HttpServletRequest {
                     return;
                 }
                 byte[] formData = null;
+                // 如果body的大小小于CACHED_POST_LEN，默认8192即8k,tomcat是用缓存的字节数组，不是重新创建一个，
+                // 新建一个意味着向os申请一块连续的内存，如果不重用，则会出现频繁的申请向os.
                 if (len < CACHED_POST_LEN) {
                     if (postData == null) {
                         postData = new byte[CACHED_POST_LEN];
@@ -3148,6 +3150,8 @@ public class Request implements HttpServletRequest {
                     formData = new byte[len];
                 }
                 try {
+                    // 这里是从inputbuffer里读数据。我们分析了半天都没有看到前面提到的inputFilt到底在那里发挥作用的，接下来它就要等场了，
+                    // 这里是普通post的非chunk，则用的是IdentityInputFilter。
                     if (readPostBody(formData, len) != len) {
                         parameters.setParseFailedReason(FailReason.REQUEST_BODY_INCOMPLETE);
                         return;
@@ -3161,6 +3165,7 @@ public class Request implements HttpServletRequest {
                     parameters.setParseFailedReason(FailReason.CLIENT_DISCONNECT);
                     return;
                 }
+                // 这里是读到具体内容后，解析出参数出来，这个都是一样的，无论是普通post请求还是chunked 请求，这个不是我们关注的点，不具体分析
                 parameters.processParameters(formData, 0, len);
             } else if ("chunked".equalsIgnoreCase(coyoteRequest.getHeader("transfer-encoding"))) {
                 byte[] formData = null;
@@ -3211,6 +3216,7 @@ public class Request implements HttpServletRequest {
 
         int offset = 0;
         do {
+            // 这里最终是Http11InputBuffer doRead 根据activeFilter 去读body
             int inputLen = getStream().read(body, offset, len - offset);
             if (inputLen <= 0) {
                 return offset;
